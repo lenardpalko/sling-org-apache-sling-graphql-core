@@ -22,14 +22,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>org.apache.sling</groupId>
-    <artifactId>sling-bundle-parent</artifactId>
+    <groupId>com.adobe.granite.sling</groupId>
+    <artifactId>sling-vendor-branch-parent</artifactId>
     <version>49</version>
     <relativePath />
   </parent>
 
   <artifactId>org.apache.sling.graphql.core</artifactId>
-  <version>0.0.24</version>
+  <version>0.0.24-B001-SNAPSHOT</version>
 
   <name>Apache Sling GraphQL Core</name>
   <description>Support for GraphQL queries</description>
