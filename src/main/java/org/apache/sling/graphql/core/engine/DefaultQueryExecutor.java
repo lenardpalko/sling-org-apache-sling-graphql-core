@@ -117,9 +117,9 @@ public class DefaultQueryExecutor implements QueryExecutor {
     private final Lock writeLock = readWriteLock.writeLock();
     private final SchemaGenerator schemaGenerator = new SchemaGenerator();
 
-    private int queryMaxTokens;
+    private int maxQueryTokens;
 
-    private int queryMaxWhitespaceTokens;
+    private int maxWhitespaceTokens;
 
     @Reference
     private RankedSchemaProviders schemaProvider;
@@ -145,16 +145,18 @@ public class DefaultQueryExecutor implements QueryExecutor {
         int schemaCacheSize() default 128;
 
         @AttributeDefinition(
-                name = "Query Max Tokens",
-                description = "The number of GraphQL query tokens to parse. This is a safety measure to avoid denial of service attacks."
+                name = "Max Query Tokens",
+                description = "The number of GraphQL query tokens to parse. This is a safety measure to avoid denial of service attacks." +
+                        " Change ONLY if you know exactly what you are doing."
         )
-        int queryMaxTokens() default 15000;
+        int maxQueryTokens() default 15000;
 
         @AttributeDefinition(
-                name = "Query Max Whitespace Tokens",
-                description = "The number of GraphQL query whitespace tokens to parse. This is a safety measure to avoid denial of service attacks."
+                name = "Max Whitespace Tokens",
+                description = "The number of GraphQL query whitespace tokens to parse. This is a safety measure to avoid denial of service attacks." +
+                        " Change ONLY if you know exactly what you are doing."
         )
-        int queryMaxWhitespaceTokens() default 200000;
+        int maxWhitespaceTokens() default 200000;
     }
 
     private class ExecutionContext {
@@ -178,6 +180,16 @@ public class DefaultQueryExecutor implements QueryExecutor {
                     .build();
 
         }
+
+        private Consumer<GraphQLContext.Builder> getGraphQLContextBuilder() {
+            final ParserOptions parserOptions = ParserOptions.getDefaultParserOptions().transform(builder -> {
+                builder
+                        .maxTokens(maxQueryTokens)
+                        .maxWhitespaceTokens(maxWhitespaceTokens)
+                        .build();
+            });
+            return builder -> builder.put(ParserOptions.class, parserOptions);
+        }
     }
 
     @Activate
@@ -186,8 +198,8 @@ public class DefaultQueryExecutor implements QueryExecutor {
         if (schemaCacheSize < 0) {
             schemaCacheSize = 0;
         }
-        queryMaxTokens = config.queryMaxTokens();
-        queryMaxWhitespaceTokens = config.queryMaxWhitespaceTokens();
+        maxQueryTokens = config.maxQueryTokens();
+        maxWhitespaceTokens = config.maxWhitespaceTokens();
 
         resourceToHashMap = new LRUCache<>(schemaCacheSize);
         hashToSchemaMap = new LRUCache<>(schemaCacheSize);
@@ -415,24 +427,6 @@ public class DefaultQueryExecutor implements QueryExecutor {
         } finally {
             readLock.unlock();
         }
-    }
-
-    private Consumer<GraphQLContext.Builder> getGraphQLContextBuilder() {
-        ParserOptions defaultParserOptions = ParserOptions.getDefaultParserOptions();
-        Consumer<GraphQLContext.Builder> graphQLContextBuilder = builder -> {
-            builder.put(ParserOptions.class, ParserOptions.newParserOptions()
-                    .captureIgnoredChars(defaultParserOptions.isCaptureIgnoredChars())
-                    .captureSourceLocation(defaultParserOptions.isCaptureSourceLocation())
-                    .captureLineComments(defaultParserOptions.isCaptureLineComments())
-                    .readerTrackData(defaultParserOptions.isReaderTrackData())
-                    .maxTokens(queryMaxTokens)
-                    .maxWhitespaceTokens(queryMaxWhitespaceTokens)
-                    .maxRuleDepth(defaultParserOptions.getMaxRuleDepth())
-                    .build()
-            );
-        };
-
-        return graphQLContextBuilder;
     }
 
     private GraphQLSchema buildSchema(@NotNull TypeDefinitionRegistry typeRegistry, @NotNull Resource currentResource) {
